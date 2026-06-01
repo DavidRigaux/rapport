@@ -65,7 +65,21 @@ perimètres_deciles = {
     },
 }
 
-perimètres_centiles = None  # Remplacez par un dict identique pour activer le bouton
+def _centiles(base_sous, base_ind, seed=0):
+    rng = np.random.default_rng(seed)
+    rows = [{"Centile": f"C{i}",
+             "Individus": base_ind//10 + int(rng.integers(-20,20)),
+             "Souscriptions": (s := int(base_sous*(1+(i-91)*.04)+rng.integers(0,5))),
+             "Taux (%)": round(s/(base_ind//10)*100, 1)}
+            for i in range(91,101)]
+    return pd.DataFrame(rows)
+
+perimètres_centiles = {
+    "Global":      {"Modèle A": _centiles(264,1200,0), "Modèle B": _centiles(250,1000,1)},
+    "Périmètre 1": {"Modèle A": _centiles(146, 600,2), "Modèle B": _centiles(132, 500,3)},
+    "Périmètre 2": {"Modèle A": _centiles(118, 600,4), "Modèle B": _centiles(118, 500,5)},
+}
+# Mettez perimètres_centiles = None pour masquer le bouton
 
 DL = [f"D{i}" for i in range(1, 11)]
 np.random.seed(0)
