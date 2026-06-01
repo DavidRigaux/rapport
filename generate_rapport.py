@@ -15,6 +15,7 @@ Mettre perimètres_centiles = None pour masquer le bouton décile/centile.
 """
 
 import pandas as pd
+import numpy as np
 from datetime import datetime
 
 # ── Vos données ──────────────────────────────────────────────────────────────
@@ -64,20 +65,61 @@ perimètres_deciles = {
     },
 }
 
-perimètres_centiles = None   # Remplacez par un dict identique pour activer le bouton
+perimètres_centiles = None  # Remplacez par un dict identique pour activer le bouton
 
-DL = [f"D{i}" for i in range(1,11)]
-import numpy as np; np.random.seed(0)
+DL = [f"D{i}" for i in range(1, 11)]
+np.random.seed(0)
 tables_transition = {
     "Transition Modèle A → Modèle B": pd.DataFrame(
-        (lambda m: m / m.sum(axis=1, keepdims=True) * 100)(
-            np.random.dirichlet([2]*10, 10)
-        ).round(1), index=DL, columns=DL),
+        (np.random.dirichlet([2]*10, 10) * 100).round(1), index=DL, columns=DL),
     "Transition Modèle B → Modèle A": pd.DataFrame(
-        (lambda m: m / m.sum(axis=1, keepdims=True) * 100)(
-            np.random.dirichlet([2]*10, 10)
-        ).round(1), index=DL, columns=DL),
+        (np.random.dirichlet([2]*10, 10) * 100).round(1), index=DL, columns=DL),
 }
+
+# ── CSS ──────────────────────────────────────────────────────────────────────
+
+CSS = """
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+:root{--bg:#f9f9f7;--surface:#fff;--border:#e4e4e0;--border2:#d0d0cb;--text:#1a1a18;--muted:#888880;--accent:#2d6a4f;--accent-bg:#eef5f1;--mono:'IBM Plex Mono',monospace}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:14px;line-height:1.6;padding:48px 40px 80px;max-width:1200px;margin:0 auto}
+.report-header{border-bottom:2px solid var(--text);padding-bottom:20px;margin-bottom:48px;display:flex;justify-content:space-between;align-items:flex-end}
+.report-header h1{font-size:1.6rem;font-weight:600;letter-spacing:-.02em}
+.report-header .meta{font-family:var(--mono);font-size:.72rem;color:var(--muted);text-align:right;line-height:1.8}
+.distrib-toolbar{position:sticky;top:0;z-index:10;background:var(--bg);display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.distrib-toolbar-title{font-size:.7rem;font-family:var(--mono);font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.toggle-group{display:flex;border:1px solid var(--border2);border-radius:4px;overflow:hidden}
+.toggle-btn{padding:5px 14px;background:var(--surface);color:var(--muted);border:none;cursor:pointer;font-family:var(--mono);font-size:.72rem;font-weight:500;letter-spacing:.05em;transition:background .15s,color .15s}
+.toggle-btn:not(:last-child){border-right:1px solid var(--border2)}
+.toggle-btn.active{background:var(--accent);color:#fff}
+.section{margin-bottom:52px}
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.section-title{font-size:.7rem;font-family:var(--mono);font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.perimetre-block{margin-bottom:40px}
+.perimetre-header{display:flex;align-items:center;gap:10px;margin:28px 0 16px}
+.perimetre-label{font-size:.75rem;font-family:var(--mono);font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--text)}
+.perimetre-rule{flex:1;height:1px;background:var(--border)}
+.tables-grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+.table-title{font-size:.82rem;font-weight:600;color:var(--text);margin-bottom:8px}
+.table-wrap{border:1px solid var(--border2);border-radius:4px;overflow-x:auto;background:var(--surface)}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+thead tr{background:#f2f2ef;border-bottom:1px solid var(--border2)}
+thead th{padding:9px 14px;text-align:right;font-family:var(--mono);font-size:.68rem;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+thead th:first-child{text-align:left}
+tbody tr{border-bottom:1px solid var(--border)}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#f6f6f3}
+tbody td{padding:8px 14px;text-align:right;font-family:var(--mono);color:var(--text);white-space:nowrap}
+tbody td:first-child{text-align:left;font-weight:500}
+.taux-wrap{display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.bar-bg{width:56px;height:5px;background:#e8e8e4;border-radius:99px;flex-shrink:0}
+.bar-fg{height:100%;border-radius:99px;background:var(--accent)}
+.diag{background:var(--accent-bg)!important;color:var(--accent)!important;font-weight:600}
+.heat-3{color:#1a1a18}.heat-2{color:#555550}.heat-1{color:#999994}.heat-0{color:#ccccca}
+body.view-decile .centile-view{display:none}
+body.view-centile .decile-view{display:none}
+.report-footer{margin-top:64px;padding-top:16px;border-top:1px solid var(--border);font-family:var(--mono);font-size:.7rem;color:var(--muted);display:flex;justify-content:space-between}
+"""
 
 # ── Rendu HTML ───────────────────────────────────────────────────────────────
 
@@ -150,7 +192,6 @@ def generate_report(perimètres_deciles, tables_transition,
         for i, (name, dec) in enumerate(perimètres_deciles.items(), 1)
     )
     transitions = "".join(transition_block(df, name) for name, df in tables_transition.items())
-
     nb = f"{len(perimètres_deciles)} périmètre(s) · {len(next(iter(perimètres_deciles.values())))} modèle(s) · {len(tables_transition)} matrice(s)"
 
     html = f"""<!DOCTYPE html>
@@ -159,7 +200,7 @@ def generate_report(perimètres_deciles, tables_transition,
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{titre}</title>
-  <link rel="stylesheet" href="rapport.css">
+  <style>{CSS}</style>
 </head>
 <body class="view-decile">
 <header class="report-header">
