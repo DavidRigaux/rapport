@@ -90,6 +90,22 @@ tables_transition = {
         (np.random.dirichlet([2]*10, 10) * 100).round(1), index=DL, columns=DL),
 }
 
+# ── MODIFICATION 1 ────────────────────────────────────────────────────────────
+# Ajoutez un dict tables_transition_nb avec exactement les mêmes clés que
+# tables_transition, mais avec vos DataFrames en nombres entiers (pas en %).
+# Les noms de clés DOIVENT correspondre à ceux de tables_transition.
+#
+# Remplacez les DataFrames ci-dessous par vos vraies données :
+tables_transition_nb = {
+    "Transition Modèle A → Modèle B": pd.DataFrame(   # ← même clé qu'au-dessus
+        ...,   # ← votre DataFrame de nombres ici
+        index=DL, columns=DL),
+    "Transition Modèle B → Modèle A": pd.DataFrame(   # ← même clé qu'au-dessus
+        ...,   # ← votre DataFrame de nombres ici
+        index=DL, columns=DL),
+}
+# ─────────────────────────────────────────────────────────────────────────────
+
 # ── CSS ──────────────────────────────────────────────────────────────────────
 
 CSS = """
@@ -133,6 +149,9 @@ tbody td:first-child{text-align:left;font-weight:500}
 body.view-decile .centile-view{display:none}
 body.view-centile .decile-view{display:none}
 .report-footer{margin-top:64px;padding-top:16px;border-top:1px solid var(--border);font-family:var(--mono);font-size:.7rem;color:var(--muted);display:flex;justify-content:space-between}
+/* MODIFICATION 2 — Ajoutez ces 2 lignes à la fin du bloc CSS, juste avant le """ fermant */
+body.view-trans-pct .trans-nb{display:none}
+body.view-trans-nb  .trans-pct{display:none}
 """
 
 # ── Rendu HTML ───────────────────────────────────────────────────────────────
@@ -170,29 +189,47 @@ def perim_block(label, dec, cen):
             f'<div class="perimetre-header"><span class="perimetre-label">{label}</span><div class="perimetre-rule"></div></div>'
             f'{dv}{cv}</div>')
 
-def transition_block(df, title):
+# ── MODIFICATION 3 ────────────────────────────────────────────────────────────
+# Remplacez entièrement la fonction transition_block par ces deux fonctions.
+# _trans_table est un helper interne ; transition_block reçoit maintenant
+# df_nb en paramètre optionnel et génère les deux tables avec les bonnes classes CSS.
+
+def _trans_table(df, fmt_cell, css_class, lo, hi):
     cols = list(df.columns)
-    lo, hi = df.values.min(), df.values.max()
     th = "".join(f"<th>{c}</th>" for c in cols)
     rows = "".join(
         "<tr><td><strong>{}</strong></td>{}</tr>".format(
             idx, "".join(
-                f'<td class="{"diag" if idx==c else heat(row[c],lo,hi)}">{row[c]:.1f}%</td>'
+                f'<td class="{"diag" if idx==c else heat(row[c],lo,hi)}">{fmt_cell(row[c])}</td>'
                 for c in cols))
         for idx, row in df.iterrows()
     )
-    return (f'<div class="table-block" style="margin-bottom:32px">'
-            f'<div class="table-title">{title}</div><div class="table-wrap"><table>'
+    return (f'<div class="table-wrap {css_class}"><table>'
             f'<thead><tr><th>orig. / dest.</th>{th}</tr></thead>'
-            f'<tbody>{rows}</tbody></table></div></div>')
+            f'<tbody>{rows}</tbody></table></div>')
+
+def transition_block(df_pct, title, df_nb=None):   # ← df_nb ajouté
+    lo, hi = df_pct.values.min(), df_pct.values.max()
+    tbl_pct = _trans_table(df_pct, lambda v: f"{v:.1f}%", "trans-pct", lo, hi)
+    if df_nb is not None:
+        lo_nb, hi_nb = df_nb.values.min(), df_nb.values.max()
+        tbl_nb = _trans_table(df_nb, lambda v: fmt(v), "trans-nb", lo_nb, hi_nb)
+    else:
+        tbl_nb = ""
+    return (f'<div class="table-block" style="margin-bottom:32px">'
+            f'<div class="table-title">{title}</div>'
+            f'{tbl_pct}{tbl_nb}</div>')
+# ─────────────────────────────────────────────────────────────────────────────
 
 def generate_report(perimètres_deciles, tables_transition,
                     perimètres_centiles=None,
+                    tables_transition_nb=None,   # ← MODIFICATION 4a : ajoutez ce paramètre
                     output_path="rapport_deciles.html",
                     titre="Analyse par Déciles"):
 
     date_str = datetime.now().strftime("%d/%m/%Y %H:%M")
     has_cen = perimètres_centiles is not None
+    has_nb = tables_transition_nb is not None   # ← MODIFICATION 4b : ajoutez cette ligne
 
     toggle = (
         '<div class="toggle-group">'
@@ -201,11 +238,28 @@ def generate_report(perimètres_deciles, tables_transition,
         '</div>'
     ) if has_cen else ""
 
+    # ── MODIFICATION 4c ───────────────────────────────────────────────────────
+    # Ajoutez ce bloc toggle_trans juste après le bloc toggle existant.
+    toggle_trans = (
+        '<div class="toggle-group">'
+        '<button class="toggle-btn active" data-trans="pct" onclick="switchTrans(\'pct\')">Pourcentages</button>'
+        '<button class="toggle-btn" data-trans="nb" onclick="switchTrans(\'nb\')">Nombres</button>'
+        '</div>'
+    ) if has_nb else ""
+    # ─────────────────────────────────────────────────────────────────────────
+
     perims = "".join(
         perim_block(f"{i:02d} — {name}", dec, (perimètres_centiles or {}).get(name))
         for i, (name, dec) in enumerate(perimètres_deciles.items(), 1)
     )
-    transitions = "".join(transition_block(df, name) for name, df in tables_transition.items())
+    # ── MODIFICATION 4d ───────────────────────────────────────────────────────
+    # Remplacez la ligne transitions = "".join(...) existante par celle-ci.
+    # Elle passe le df_nb correspondant à chaque matrice (ou None si absent).
+    transitions = "".join(
+        transition_block(df, name, (tables_transition_nb or {}).get(name))
+        for name, df in tables_transition.items()
+    )
+    # ─────────────────────────────────────────────────────────────────────────
     nb = f"{len(perimètres_deciles)} périmètre(s) · {len(next(iter(perimètres_deciles.values())))} modèle(s) · {len(tables_transition)} matrice(s)"
 
     html = f"""<!DOCTYPE html>
@@ -216,7 +270,8 @@ def generate_report(perimètres_deciles, tables_transition,
   <title>{titre}</title>
   <style>{CSS}</style>
 </head>
-<body class="view-decile">
+<!-- MODIFICATION 4e : ajoutez "view-trans-pct" à la classe du body -->
+<body class="view-decile view-trans-pct">
 <header class="report-header">
   <h1>{titre}</h1>
   <div class="meta">Généré le {date_str}<br>{nb}</div>
@@ -228,16 +283,27 @@ def generate_report(perimètres_deciles, tables_transition,
   {perims}
 </section>
 <section class="section">
-  <div class="section-header"><div class="section-title">Matrices de transition</div></div>
+  <!-- MODIFICATION 4f : ajoutez {{toggle_trans}} dans le section-header -->
+  <div class="section-header">
+    <div class="section-title">Matrices de transition</div>
+    {toggle_trans}
+  </div>
   {transitions}
 </section>
 <footer class="report-footer">
   <span>Rapport automatique — {titre}</span><span>{date_str}</span>
 </footer>
 <script>
+  <!-- MODIFICATION 4g : remplacez la fonction switchView et ajoutez switchTrans -->
   function switchView(m) {{
-    document.body.className='view-'+m;
-    document.querySelectorAll('.toggle-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
+    document.body.classList.remove('view-decile','view-centile');
+    document.body.classList.add('view-'+m);
+    document.querySelectorAll('.toggle-btn[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
+  }}
+  function switchTrans(m) {{
+    document.body.classList.remove('view-trans-pct','view-trans-nb');
+    document.body.classList.add('view-trans-'+m);
+    document.querySelectorAll('.toggle-btn[data-trans]').forEach(b=>b.classList.toggle('active',b.dataset.trans===m));
   }}
 </script>
 </body></html>"""
@@ -252,4 +318,5 @@ if __name__ == "__main__":
         perimètres_deciles=perimètres_deciles,
         perimètres_centiles=perimètres_centiles,
         tables_transition=tables_transition,
+        tables_transition_nb=tables_transition_nb,   # ← MODIFICATION 5 : ajoutez cette ligne
     )
